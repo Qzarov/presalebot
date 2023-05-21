@@ -1,6 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 
-class Database {
+export class Database {
 
     constructor() {
         this.db = new sqlite3.Database('./data/presale.db',(err) => {
@@ -26,11 +26,17 @@ class Database {
         });
     }
 
-    add_user(id_user, username, callback) {
-        // TODO check if user is already in db
-        const qry = `INSERT INTO USERS(id_user,username) VALUES(${id_user},"${username}")`;
-        this.db.run(qry, [], (err) => {
-            callback(err);
+    addUser(id_user, username, callback) {
+        this.userExists(id_user, (exists) => {
+            let is_user_new = false;
+            if (!exists) {
+                is_user_new = true;
+                const qry = `INSERT INTO USERS(id_user,username) VALUES(${id_user},"${username}")`;
+                this.db.run(qry, [], (err) => {
+                    callback(is_user_new, err);
+                });
+            }
+            callback(is_user_new)
         });
     }
 
@@ -49,7 +55,32 @@ class Database {
             callback(results);
         });
     }
-    add_user_wallet(id_user, wallet) {
+
+    userExists(id_user, callback) {
+        const qry = `SELECT * FROM USERS WHERE id_user=${id_user};`;
+        this.db.all(qry, [], (err, results) => {
+            if (err) return console.error(err.message);
+            if (results) {
+                callback(true);
+            } else {
+                callback(false)
+            }
+        });
+    }
+
+    userHasWallet(id_user, callback) {
+        const qry = `SELECT wallet FROM USERS WHERE id_user=${id_user};`;
+        this.db.all(qry, [], (err, results) => {
+            if (err) return console.error(err.message);
+            if (results) {
+                callback(true);
+            } else {
+                callback(false)
+            }
+        });
+    }
+
+    setUserWallet(id_user, wallet) {
         const qry = `UPDATE USERS SET wallet='${wallet}' WHERE id_user=${id_user};`;
         this.db.run(qry, [], (err) => {
             if (err) return console.error(err.message);
