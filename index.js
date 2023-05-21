@@ -6,6 +6,8 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+const OWNER_ADDR = process.env.OWNER_ADDR
+
 const db = new Database();
 const bot = new TelegramBot(process.env.BOT_TOKEN, {polling: true});
 const app = express();
@@ -30,7 +32,7 @@ bot.on('text', async (msg) => {
         if (command === '/start') {
             cmd_handler_start(chat_id, username);
         } else if (command === '/wallet') {
-            const answer = `Ваш кошелек <a href="https://tonscan.org/address/${arr[1]}">${arr[1]}</a>. Подтвердить?`
+            const answer = `Подтвердить кошелек <a href="https://tonscan.org/address/${arr[1]}">${arr[1]}</a>?`
             bot.sendMessage(chat_id, answer, {
                 parse_mode: `HTML`,
                 disable_web_page_preview: false,
@@ -38,7 +40,7 @@ bot.on('text', async (msg) => {
                     resize_keyboard: true,
                     inline_keyboard: [
                         [
-                            {text: 'Подтвердить', callback_data: `wallet:${arr[1]}`},
+                            {text: 'Подтвердить', callback_data: `add_wallet:${arr[1]}`},
                             {text: 'Нет', callback_data: `no`}
                         ]
                     ]
@@ -54,9 +56,38 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
         id: callbackQuery.from.id,
         username: callbackQuery.from.username,
         action: callbackQuery.data,
-        callback_id: callbackQuery.id,
     };
-    // const msg = callbackQuery.message;
+
+    if (sender.action.includes(':')) {
+        const command = sender.action.split(':')[0]
+        if (command === 'add_wallet') {
+            const wallet = sender.action.split(':')[1]
+            const answer = `Отправьте 0.02 TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
+            bot.sendMessage(sender.id, answer, {
+                parse_mode: `Markdown`,
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {text: 'Отправлено', callback_data: `check_wallet:${wallet}`},
+                        ]
+                    ]
+                }
+            }).then();
+        }
+        if (command === 'check_wallet') {
+            // TODO check test transaction
+            const trans_send = true;
+
+            if (trans_send) {
+                const wallet = sender.action.split(':')[1]
+                db.setUserWallet(sender.id, wallet)
+                bot.answerCallbackQuery(callbackQuery.id, {
+                    text: `Ваш кошелек успешно добавлен`,
+                }).then();
+                cmd_handler_start(sender.id, sender.username)
+            }
+        }
+    }
 
     if (sender.action === 'wallet') {
         const answer = `Введите ваш кошелек в формате "/wallet адрес_кошелька"`
@@ -70,10 +101,10 @@ function cmd_handler_start(chatId, username) {
         db.userHasWallet(chatId, (has_wallet) => {
             let buttons;
             if (has_wallet) {
-                answer += `\nВы можете купить одну обычную NFT, заплатив 10 TON, или заплатить 50 TON и получить либо 1 редкую NFT, либо 5 обычных.`
+                answer += `\nВы можете купить одну обычную NFT, заплатив 10 TON, или заплатить 50 TON и получить либо 1 редкую NFT, либо 5 обычных`
                 buttons = [{text: '10 TON', callback_data: '10'},{text: '50 TON', callback_data: '50'}]
             } else {
-                answer += `\nДля продолжения взаимодействия с ботом необходимо добавить ваш кошелек.`;
+                answer += `\nДля продолжения взаимодействия с ботом необходимо добавить ваш кошелек`;
                 buttons = [{text: 'Добавить кошелёк', callback_data: 'wallet'},]
             }
 
