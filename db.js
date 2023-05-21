@@ -1,7 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 
 export class Database {
-
     constructor() {
         this.db = new sqlite3.Database('./data/presale.db',(err) => {
             if (err) {
@@ -40,7 +39,7 @@ export class Database {
         });
     }
 
-    get_user_by_id(id_user, callback) {
+    getUserById(id_user, callback) {
         const qry = `SELECT * FROM USERS WHERE id_user=${id_user};`;
         this.db.all(qry, [], (err, results) => {
             if (err) return console.error(err.message);
@@ -48,7 +47,7 @@ export class Database {
         });
     }
 
-    get_user_by_username(username, callback) {
+    getUserByUsername(username, callback) {
         const qry = `SELECT * FROM USERS WHERE username=${username};`;
         this.db.all(qry, [], (err, results) => {
             if (err) return console.error(err.message);
@@ -60,7 +59,7 @@ export class Database {
         const qry = `SELECT * FROM USERS WHERE id_user=${id_user};`;
         this.db.all(qry, [], (err, results) => {
             if (err) return console.error(err.message);
-            if (results) {
+            if (results.length) {
                 callback(true);
             } else {
                 callback(false)
@@ -72,7 +71,7 @@ export class Database {
         const qry = `SELECT wallet FROM USERS WHERE id_user=${id_user};`;
         this.db.all(qry, [], (err, results) => {
             if (err) return console.error(err.message);
-            if (results) {
+            if (results['wallet']) {
                 callback(true);
             } else {
                 callback(false)
@@ -87,21 +86,21 @@ export class Database {
         });
     }
 
-    add_nft(contract, tier, callback) {
+    addNft(contract, tier, callback) {
         const qry = `INSERT INTO NFTS(contract,tier) VALUES("${contract}",${tier})`;
         this.db.run(qry, [], (err) => {
             callback(err);
         });
     }
 
-    set_nft_owner(id_nft, owner_id, owner_wallet) {
+    setNftOwner(id_nft, owner_id, owner_wallet) {
         const qry = `UPDATE NFTS SET owner_id=${owner_id} AND owner_wallet='${owner_wallet}' WHERE id_nft=${id_nft};`;
         this.db.run(qry, [], (err) => {
             if (err) return console.error(err.message);
         });
     }
 
-    get_not_owned_nfts(callback) {
+    getNotOwnedNfts(callback) {
         const qry = `SELECT * FROM NFTS WHERE owner_id=NULL;`;
         this.db.all(qry, [], (err, results) => {
             if (err) return console.error(err.message);
