@@ -1,8 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api'
-import {Database} from './db.js'
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import {Database} from './db.js'
+import {checkTransaction} from "./ton_connector.js"
 
 dotenv.config()
 
@@ -51,7 +52,7 @@ bot.on('text', async (msg) => {
 
 });
 
-bot.on('callback_query', function onCallbackQuery(callbackQuery) {
+bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
     const sender = {
         id: callbackQuery.from.id,
         username: callbackQuery.from.username,
@@ -61,14 +62,14 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
     if (sender.action.includes(':')) {
         const command = sender.action.split(':')[0]
         if (command === 'add_wallet') {
-            const wallet = sender.action.split(':')[1]
-            const answer = `Отправьте 0.02 TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
+            const user_wallet = sender.action.split(':')[1]
+            const answer = `Отправьте 0.03 TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
             bot.sendMessage(sender.id, answer, {
                 parse_mode: `Markdown`,
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            {text: 'Отправлено', callback_data: `check_wallet:${wallet}`},
+                            {text: 'Отправлено', callback_data: `check_wallet:${user_wallet}`},
                         ]
                     ]
                 }
@@ -76,18 +77,23 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
         }
         if (command === 'check_wallet') {
             // TODO check test transaction
-            const trans_send = true;
-
-            if (trans_send) {
-                const wallet = sender.action.split(':')[1]
-                db.setUserWallet(sender.id, wallet)
-                bot.answerCallbackQuery(callbackQuery.id, {
-                    text: `Ваш кошелек успешно добавлен`,
-                }).then();
-                cmd_handler_start(sender.id, sender.username)
-            }
+            const user_wallet = sender.action.split(':')[1]
+            await checkTransaction(user_wallet, OWNER_ADDR, 0.03, (trans_send) => {
+                if (trans_send) {
+                    const wallet = sender.action.split(':')[1]
+                    db.setUserWallet(sender.id, wallet)
+                    bot.answerCallbackQuery(callbackQuery.id, {
+                        text: `Ваш кошелек успешно добавлен`,
+                    }).then();
+                    cmd_handler_start(sender.id, sender.username)
+                } else {
+                    bot.answerCallbackQuery(callbackQuery.id, {
+                        text: `Транзакция не найдена, нажмите повторно через 10 секунд`,
+                    }).then();
+                }
+            }).then();
         }
-    }
+     }
 
     if (sender.action === 'wallet') {
         const answer = `Введите ваш кошелек в формате "/wallet адрес_кошелька"`

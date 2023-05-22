@@ -15,6 +15,8 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "node-telegram-bot-api": "^0.61.0",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "tonweb": "^0.0.60",
+    "tonweb-mnemonic": "^1.0.1"
   }
 }
