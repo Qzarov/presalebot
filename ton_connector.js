@@ -40,13 +40,14 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
 export async function sendNft(send_to_addr, nft_addr) {
     const nft_address = new TonWeb.utils.Address(nft_addr); //NFT адрес
     const transfer_to_address = new TonWeb.utils.Address(send_to_addr); //Куда отправляем NFT?
+    const my_address = new TonWeb.utils.Address(process.env.OWNER_ADDR);
 
     const mnemonic_list = process.env.MNEMONIK.split(',')
     const keyPair = await tonMnemonic.mnemonicToKeyPair(mnemonic_list);
     const wallet = new tonweb.wallet.all.v3R2(tonweb.provider, {publicKey: keyPair.publicKey});
     const seqno = await wallet.methods.seqno().call();
 
-    const amount = TonWeb.utils.toNano('0.1');
+    const amount = TonWeb.utils.toNano('0.5');
 
     let nftItem = new NftItem(tonweb.provider, {address: nft_address})
 
@@ -57,9 +58,9 @@ export async function sendNft(send_to_addr, nft_addr) {
         seqno: seqno,
         payload: await nftItem.createTransferBody({
             newOwnerAddress: transfer_to_address,
-            forwardAmount: TonWeb.utils.toNano('0.1'),
+            forwardAmount: TonWeb.utils.toNano('0.01'),
             forwardPayload: new TextEncoder().encode('presale'),
-            responseAddress: transfer_to_address
+            responseAddress: my_address
         }),
     }
     console.log("params: ", params)
