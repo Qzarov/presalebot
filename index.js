@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import {Database} from './db.js'
-import {checkTransaction} from "./ton_connector.js"
+import {checkTransaction, sendNft} from "./ton_connector.js"
 
 dotenv.config()
 
@@ -102,7 +102,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                     console.log("trans_send: ", trans_send)
                     if (trans_send) {
                         db.setNftOwner(nft.id, sender.id, user_wallet)
-                        // TODO send NFT
+                        sendNft(user_wallet, nft.addr);
                         bot.answerCallbackQuery(callbackQuery.id, {
                             text: `Поздравляем, NFT отправлена!`,
                         }).then();
@@ -122,8 +122,6 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
     } else if (sender.action === `buy_common`) {
         db.getNotOwnedNfts((nfts) => {
             const nft = getRandomNft(nfts.common);
-            console.log("random addr: ", nft.contract);
-
             const answer = `Для покупки 1 common NFT отвравьте ${COMMON_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
             bot.sendMessage(sender.id, answer, {
                 parse_mode: `Markdown`,

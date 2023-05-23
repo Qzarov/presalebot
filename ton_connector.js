@@ -1,6 +1,7 @@
 import TonWeb from 'tonweb'
 import tonMnemonic from 'tonweb-mnemonic'
 import dotenv from 'dotenv'
+
 dotenv.config()
 
 const TRANS_LIMIT = process.env.TRANS_LIMIT;
@@ -8,11 +9,7 @@ const TRANS_LIMIT = process.env.TRANS_LIMIT;
 const tonweb = new TonWeb(new TonWeb.HttpProvider(process.env.TON_API_PROVIDER,
     {apiKey: process.env.TON_API_KEY}));
 
-const mnemonic_list = process.env.MNEMONIK.split(',')
-const keyPair = await tonMnemonic.mnemonicToKeyPair(mnemonic_list);
-const wallet = new tonweb.wallet.all.v3R2(tonweb.provider, {publicKey: keyPair.publicKey});
-const seqno = await wallet.methods.seqno().call();
-let wallet_owner = process.env.OWNER_ADDR
+// let wallet_owner = process.env.OWNER_ADDR
 const {NftItem} = TonWeb.token.nft;
 
 export async function checkTransaction(w_sender, w_receiver, coins, callback) {
@@ -38,4 +35,51 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
         console.log("error occurred: ", err)
     }
     callback(is_found)
+}
+
+export async function sendNft(send_to_addr, nft_addr) {
+    // const nftAddress = new TonWeb.utils.Address("EQBZa9sIC8415a2HGYSzI-OBt1o3ImdcoO8J5DUUAgIHu44d"); //NFT адрес
+    // const transferTo = new TonWeb.utils.Address("kQDWrh9egBTpNqmY8HOOho5xocMt5r8udUHmFn4LWSOVB50D"); //Куда отправляем NFT?
+    if (!isAddrValid(send_to_addr)) {
+        console.log("error: send_to_addr not valid");
+        return;
+    }
+    console.log("send_to_addr valid")
+
+    if (!isAddrValid(nft_addr)) {
+        console.log("error: nft_addr not valid");
+        return;
+    }
+    console.log("nft_addr valid")
+
+    const mnemonic_list = process.env.MNEMONIK.split(',')
+    const keyPair = await tonMnemonic.mnemonicToKeyPair(mnemonic_list);
+    const wallet = new tonweb.wallet.all.v3R2(tonweb.provider, {publicKey: keyPair.publicKey});
+    const seqno = await wallet.methods.seqno().call();
+
+    const amount = TonWeb.utils.toNano('0.1');
+
+    let nftItem = new NftItem(tonweb.provider, {address: nft_addr})
+
+    console.log("nft: ", nftItem)
+    console.log("new owner: ", send_to_addr)
+
+    console.log(
+        await wallet.methods.transfer({
+            secretKey: keyPair.secretKey,
+            toAddress: await nft_addr,
+            amount: amount,
+            seqno: seqno,
+            payload: await nftItem.createTransferBody({
+                newOwnerAddress: send_to_addr,
+                forwardAmount: TonWeb.utils.toNano('0.1'),
+                forwardPayload: new TextEncoder().encode('presale'),
+                responseAddress: send_to_addr
+            }),
+        }).send().catch(e => console.log(e))
+    );
+}
+
+function isAddrValid(addr) {
+    return addr.length === 48;
 }
