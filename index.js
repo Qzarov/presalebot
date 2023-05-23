@@ -129,7 +129,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                     resize_keyboard: true,
                     inline_keyboard: [
                         [
-                            {text: 'Отправлено', callback_data: `buy_common:${nft.id_nft}:${nft.contract}`},
+                            {text: 'Оплата отправлена', callback_data: `buy_common:${nft.id_nft}:${nft.contract}`},
                         ]
                     ]
                 }

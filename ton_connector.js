@@ -38,19 +38,8 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
 }
 
 export async function sendNft(send_to_addr, nft_addr) {
-    // const nftAddress = new TonWeb.utils.Address("EQBZa9sIC8415a2HGYSzI-OBt1o3ImdcoO8J5DUUAgIHu44d"); //NFT адрес
-    // const transferTo = new TonWeb.utils.Address("kQDWrh9egBTpNqmY8HOOho5xocMt5r8udUHmFn4LWSOVB50D"); //Куда отправляем NFT?
-    if (!isAddrValid(send_to_addr)) {
-        console.log("error: send_to_addr not valid");
-        return;
-    }
-    console.log("send_to_addr valid")
-
-    if (!isAddrValid(nft_addr)) {
-        console.log("error: nft_addr not valid");
-        return;
-    }
-    console.log("nft_addr valid")
+    const nft_address = new TonWeb.utils.Address(nft_addr); //NFT адрес
+    const transfer_to_address = new TonWeb.utils.Address(send_to_addr); //Куда отправляем NFT?
 
     const mnemonic_list = process.env.MNEMONIK.split(',')
     const keyPair = await tonMnemonic.mnemonicToKeyPair(mnemonic_list);
@@ -59,24 +48,24 @@ export async function sendNft(send_to_addr, nft_addr) {
 
     const amount = TonWeb.utils.toNano('0.1');
 
-    let nftItem = new NftItem(tonweb.provider, {address: nft_addr})
+    let nftItem = new NftItem(tonweb.provider, {address: nft_address})
 
-    console.log("nft: ", nftItem)
-    console.log("new owner: ", send_to_addr)
+    const params = {
+        secretKey: keyPair.secretKey,
+        toAddress: await nft_address,
+        amount: amount,
+        seqno: seqno,
+        payload: await nftItem.createTransferBody({
+            newOwnerAddress: transfer_to_address,
+            forwardAmount: TonWeb.utils.toNano('0.1'),
+            forwardPayload: new TextEncoder().encode('presale'),
+            responseAddress: transfer_to_address
+        }),
+    }
+    console.log("params: ", params)
 
     console.log(
-        await wallet.methods.transfer({
-            secretKey: keyPair.secretKey,
-            toAddress: await nft_addr,
-            amount: amount,
-            seqno: seqno,
-            payload: await nftItem.createTransferBody({
-                newOwnerAddress: send_to_addr,
-                forwardAmount: TonWeb.utils.toNano('0.1'),
-                forwardPayload: new TextEncoder().encode('presale'),
-                responseAddress: send_to_addr
-            }),
-        }).send().catch(e => console.log(e))
+        await wallet.methods.transfer(params).send().catch(e => console.log(e))
     );
 }
 
