@@ -8,6 +8,8 @@ import {checkTransaction} from "./ton_connector.js"
 dotenv.config()
 
 const OWNER_ADDR = process.env.OWNER_ADDR
+const COMMON_NFT_PRICE = process.env.COMMON_NFT_PRICE
+const RARE_NFT_PRICE = process.env.RARE_NFT_PRICE
 
 const db = new Database();
 const bot = new TelegramBot(process.env.BOT_TOKEN, {polling: true});
@@ -63,7 +65,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         const command = sender.action.split(':')[0]
         if (command === 'add_wallet') {
             const user_wallet = sender.action.split(':')[1]
-            const answer = `Отправьте 0.03 TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
+            const answer = `Отправьте ${process.env.VERIFICATION_COST} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
             bot.sendMessage(sender.id, answer, {
                 parse_mode: `Markdown`,
                 reply_markup: {
@@ -76,9 +78,8 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
             }).then();
         }
         if (command === 'check_wallet') {
-            // TODO check test transaction
             const user_wallet = sender.action.split(':')[1]
-            await checkTransaction(user_wallet, OWNER_ADDR, 0.03, (trans_send) => {
+            await checkTransaction(user_wallet, OWNER_ADDR, process.env.VERIFICATION_COST, (trans_send) => {
                 if (trans_send) {
                     const wallet = sender.action.split(':')[1]
                     db.setUserWallet(sender.id, wallet)
@@ -107,21 +108,24 @@ function cmd_handler_start(chatId, username) {
         db.userHasWallet(chatId, (has_wallet) => {
             let buttons;
             if (has_wallet) {
-                answer += `\nВы можете купить одну обычную NFT, заплатив 10 TON, или заплатить 50 TON и получить либо 1 редкую NFT, либо 5 обычных`
-                buttons = [{text: '10 TON', callback_data: '10'},{text: '50 TON', callback_data: '50'}]
+                answer += `\nВы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных`
+                buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
             } else {
                 answer += `\nДля продолжения взаимодействия с ботом необходимо добавить ваш кошелек`;
                 buttons = [{text: 'Добавить кошелёк', callback_data: 'wallet'},]
             }
 
-            bot.sendMessage(chatId, answer, {
-                reply_markup: {
-                    resize_keyboard: true,
-                    inline_keyboard: [
-                        buttons
-                    ]
-                }
-            }).then();
+            db.getNotOwnedNfts((nfts) => {
+                answer += `\n\nДоступно NFT: ${nfts.common.length} common и ${nfts.rare.length} rare`
+                bot.sendMessage(chatId, answer, {
+                    reply_markup: {
+                        resize_keyboard: true,
+                        inline_keyboard: [
+                            buttons
+                        ]
+                    }
+                }).then();
+            });
         });
     });
 }

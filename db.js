@@ -20,7 +20,7 @@ export class Database {
             if (err) return console.error(err.message);
         });
 
-        const qry1 = `CREATE TABLE IF NOT EXISTS NFTS(id_nft INTEGER PRIMARY KEY AUTOINCREMENT, contract TEXT, tier INTEGER, owner_id INTEGER, owner_wallet TEXT)`;
+        const qry1 = `CREATE TABLE IF NOT EXISTS NFTS(id_nft INTEGER PRIMARY KEY AUTOINCREMENT, contract TEXT, tier TEXT, owner_id INTEGER, owner_wallet TEXT)`;
         this.db.run(qry1, [], (err) => {
             if (err) return console.error(err.message);
         });
@@ -102,10 +102,23 @@ export class Database {
     }
 
     getNotOwnedNfts(callback) {
-        const qry = `SELECT * FROM NFTS WHERE owner_id=NULL;`;
-        this.db.all(qry, [], (err, results) => {
+        const qry = `SELECT * FROM NFTS`;
+        this.db.all(qry, [], (err, rows) => {
             if (err) return console.error(err.message);
-            callback(results);
+            let nfts = {
+                common: [],
+                rare: []
+            }
+            rows.forEach((row) => {
+                if (row.owner_id === null) {
+                    if (row.tier === `common`) {
+                        nfts.common.push(row)
+                    } else {
+                        nfts.rare.push(row)
+                    }
+                }
+            });
+            callback(nfts);
         });
     }
 
