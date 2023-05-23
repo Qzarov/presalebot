@@ -29,6 +29,8 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
 
                 if (trans_source === w_sender && trans_value === nano_coins) {
                     is_found = true
+                    callback(is_found)
+                    return
                 }
             }
         }

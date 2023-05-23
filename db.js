@@ -75,7 +75,7 @@ export class Database {
             if (!results[0]['wallet']) {
                 callback(false)
             } else {
-                callback(true);
+                callback(true, results[0]['wallet']);
             }
         });
     }
@@ -95,8 +95,13 @@ export class Database {
     }
 
     setNftOwner(id_nft, owner_id, owner_wallet) {
-        const qry = `UPDATE NFTS SET owner_id=${owner_id} AND owner_wallet='${owner_wallet}' WHERE id_nft=${id_nft};`;
+        const qry = `UPDATE NFTS SET owner_id=${owner_id} WHERE id_nft=${id_nft};`;
         this.db.run(qry, [], (err) => {
+            if (err) return console.error(err.message);
+        });
+
+        const qry1 = `UPDATE NFTS SET owner_wallet="${owner_wallet}" WHERE id_nft=${id_nft};`;
+        this.db.run(qry1, [], (err) => {
             if (err) return console.error(err.message);
         });
     }

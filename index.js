@@ -76,8 +76,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                     ]
                 }
             }).then();
-        }
-        if (command === 'check_wallet') {
+        } else if (command === 'check_wallet') {
             const user_wallet = sender.action.split(':')[1]
             await checkTransaction(user_wallet, OWNER_ADDR, process.env.VERIFICATION_COST, (trans_send) => {
                 if (trans_send) {
@@ -93,12 +92,55 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                     }).then();
                 }
             }).then();
+        } else if (command === 'buy_common') {
+            const nft = {
+                id: sender.action.split(':')[1],
+                addr: sender.action.split(':')[2],
+            }
+            db.userHasWallet(sender.id, async (has_wallet, user_wallet) => {
+                await checkTransaction(user_wallet, OWNER_ADDR, COMMON_NFT_PRICE, (trans_send) => {
+                    console.log("trans_send: ", trans_send)
+                    if (trans_send) {
+                        db.setNftOwner(nft.id, sender.id, user_wallet)
+                        // TODO send NFT
+                        bot.answerCallbackQuery(callbackQuery.id, {
+                            text: `Поздравляем, NFT отправлена!`,
+                        }).then();
+                    } else {
+                        bot.answerCallbackQuery(callbackQuery.id, {
+                            text: `Транзакция не найдена, нажмите повторно через 10 секунд`,
+                        }).then();
+                    }
+                }).then();
+            });
         }
      }
 
     if (sender.action === 'wallet') {
         const answer = `Введите ваш кошелек в формате "/wallet адрес_кошелька"`
         bot.sendMessage(sender.id, answer, {}).then();
+    } else if (sender.action === `buy_common`) {
+        db.getNotOwnedNfts((nfts) => {
+            const nft = getRandomNft(nfts.common);
+            console.log("random addr: ", nft.contract);
+
+            const answer = `Для покупки 1 common NFT отвравьте ${COMMON_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
+            bot.sendMessage(sender.id, answer, {
+                parse_mode: `Markdown`,
+                reply_markup: {
+                    resize_keyboard: true,
+                    inline_keyboard: [
+                        [
+                            {text: 'Отправлено', callback_data: `buy_common:${nft.id_nft}:${nft.contract}`},
+                        ]
+                    ]
+                }
+            }).then();
+        })
+    } else if (sender.action === `buy_rare`) {
+        db.getNotOwnedNfts((nfts) => {
+            const nft = getRandomNft(nfts.rare);
+        })
     }
 });
 
@@ -128,4 +170,9 @@ function cmd_handler_start(chatId, username) {
             });
         });
     });
+}
+
+function getRandomNft(nfts) {
+    const random_int = Math.floor(Math.random() * (nfts.length-1));
+    return nfts[random_int];
 }
