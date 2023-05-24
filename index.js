@@ -35,20 +35,9 @@ bot.on('text', async (msg) => {
         if (command === '/start') {
             cmd_handler_start(chat_id, username);
         } else if (command === '/wallet') {
-            const answer = `Подтвердить кошелек <a href="https://tonscan.org/address/${arr[1]}">${arr[1]}</a>?`
-            bot.sendMessage(chat_id, answer, {
-                parse_mode: `HTML`,
-                disable_web_page_preview: false,
-                reply_markup: {
-                    resize_keyboard: true,
-                    inline_keyboard: [
-                        [
-                            {text: 'Подтвердить', callback_data: `add_wallet:${arr[1]}`},
-                            {text: 'Нет', callback_data: `no`}
-                        ]
-                    ]
-                }
-            }).then();
+            cmd_handler_wallet(chat_id, arr[1]);
+        } else if (command === '/get_collection_data') {
+            await get_collection_data(process.env.COLLECTION_ADDR)
         }
     }
 
@@ -135,6 +124,23 @@ function cmd_handler_start(chatId, username) {
             });
         });
     });
+}
+
+function cmd_handler_wallet(chat_id, wallet) {
+    const answer = `Подтвердить кошелек <a href="https://tonscan.org/address/${wallet}">${wallet}</a>?`
+    bot.sendMessage(chat_id, answer, {
+        parse_mode: `HTML`,
+        disable_web_page_preview: false,
+        reply_markup: {
+            resize_keyboard: true,
+            inline_keyboard: [
+                [
+                    {text: 'Подтвердить', callback_data: `add_wallet:${wallet}`},
+                    {text: 'Нет', callback_data: `no`}
+                ]
+            ]
+        }
+    }).then();
 }
 
 function call_buy_common(sender_id) {
