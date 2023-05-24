@@ -13,6 +13,8 @@ const tonweb = new TonWeb(new TonWeb.HttpProvider(process.env.TON_API_PROVIDER,
 const {NftItem} = TonWeb.token.nft;
 
 export async function checkTransaction(w_sender, w_receiver, coins, callback) {
+    const exclude_by_utime = [1684920409] //метки времени, по которым мы исключаем транзакции, их может быть несколько. Она должна передаваться в аргументы функции
+
     const nano_coins = coins * 1000000000;
     let is_found = false;
 
@@ -22,12 +24,31 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
             if (res[i]?.hasOwnProperty('in_msg')) {
                 const in_msg = res[i]['in_msg'];
                 const trans_source = in_msg['source'];
+                if (trans_source.length !== 48) //иногда апри поиске в истории попадаются адреса "". Мы проверяем длину на 48. Если не 48 идем дальше
+                    continue
+
                 const trans_value = Number(in_msg['value']);
 
-                if (trans_source === w_sender && trans_value === nano_coins) {
-                    is_found = true
-                    callback(is_found)
-                    return
+                const trans_source_str_format = new tonweb.utils.Address(trans_source).toString(true, true, true, true)
+                const w_sender_str_format = new tonweb.utils.Address(w_sender).toString(true, true, true, true)
+
+                if (trans_source_str_format === w_sender_str_format && trans_value === nano_coins) {
+                    let excluded_by_ts = false //проверка на использованные транзакции
+
+                    for (let j=0; j<exclude_by_utime.length; j++)
+                        if (res[i]['utime']===exclude_by_utime[j])
+                        {
+                            excluded_by_ts = true
+                            break
+                        }
+
+                    if (excluded_by_ts===false)
+                    {
+                        is_found = true
+                        const utime = res[i]['utime'] //будем сохранять метку времени как идентификатор транзакции
+                        callback(is_found)
+                        return
+                    }
                 }
             }
         }
