@@ -12,6 +12,7 @@ const tonweb = new TonWeb(new TonWeb.HttpProvider(process.env.TON_API_PROVIDER,
 const {NftItem, NftCollection} = TonWeb.token.nft;
 
 export async function checkTransaction(w_sender, w_receiver, coins, callback) {
+    // TODO add exclude time savin' & checkin'
     const exclude_by_utime = [1684920409] //метки времени, по которым мы исключаем транзакции, их может быть несколько. Она должна передаваться в аргументы функции
 
     const nano_coins = coins * 1000000000;
@@ -81,7 +82,7 @@ export async function sendNft(send_to_addr, nft_addr) {
             responseAddress: my_address
         }),
     }
-    console.log("params: ", params)
+    // console.log("params: ", params)
 
     console.log(
         await wallet.methods.transfer(params).send().catch(e => console.log(e))

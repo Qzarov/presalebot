@@ -55,11 +55,13 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         action: callbackQuery.data,
     };
 
+    console.log("user: ", sender.username, " send action: ", sender.action)
+
     if (sender.action.includes(':')) {
         const command = sender.action.split(':')[0]
         if (command === 'add_wallet') {
             const user_wallet = sender.action.split(':')[1]
-            const answer = `Отправьте ${process.env.VERIFICATION_COST} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
+            const answer = `Для подтверждения кошелька отправьте ${process.env.VERIFICATION_COST} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
             bot.sendMessage(sender.id, answer, {
                 parse_mode: `Markdown`,
                 reply_markup: {
@@ -158,7 +160,7 @@ function call_buy_common(sender_id) {
                 resize_keyboard: true,
                 inline_keyboard: [
                     [
-                        {text: 'Оплата отправлена', callback_data: `send_common:${nft.id_nft}:${nft.contract}`},
+                        {text: 'Оплата отправлена', callback_data: `send_common`},
                     ]
                 ]
             }
@@ -174,21 +176,27 @@ function call_buy_rare(sender_id) {
             resize_keyboard: true,
             inline_keyboard: [
                 [
-                    {text: 'Оплата отправлена', callback_data: `send_rare:${nft.id_nft}:${nft.contract}`},
+                    {text: 'Оплата отправлена', callback_data: `send_rare`},
                 ]
             ]
         }
     }).then();
 }
 
-function call_send_common (sender_id, callback_id) {
+function call_send_common(sender_id, callback_id) {
     db.getNotOwnedNfts((nfts) => {
         db.userHasWallet(sender_id, async (has_wallet, user_wallet) => {
-            await checkTransaction(user_wallet, OWNER_ADDR, COMMON_NFT_PRICE, (trans_send) => {
+            await checkTransaction(user_wallet, OWNER_ADDR, COMMON_NFT_PRICE, async (trans_send) => {
                 if (trans_send) {
                     const nft = getRandomNft(nfts, 'common');
-                    db.setNftOwner(nft[0].id, sender_id, user_wallet)
-                    sendNft(user_wallet, nft[0].addr);
+
+                    console.log("random common: ", nft);
+
+                    console.log(`set owner id:${sender_id} wallet:${user_wallet} for NFT id ${nft[0].id_nft}`);
+                    await db.setNftOwner(nft[0].id_nft, sender_id, user_wallet)
+
+                    console.log(`send ${nft[0].tier} nft addr:${nft[0].contract} to ${user_wallet}`);
+                    await sendNft(user_wallet, nft[0].contract);
                     bot.answerCallbackQuery(callback_id, {
                         text: `Поздравляем, NFT отправлена!`,
                     }).then();
@@ -206,11 +214,16 @@ function call_send_rare(sender_id, callback_id) {
     db.getNotOwnedNfts((nfts) => {
         const nft = getRandomNft(nfts, 'rare');
         db.userHasWallet(sender_id, async (has_wallet, user_wallet) => {
-            await checkTransaction(user_wallet, OWNER_ADDR, RARE_NFT_PRICE, (trans_send) => {
+            await checkTransaction(user_wallet, OWNER_ADDR, RARE_NFT_PRICE, async (trans_send) => {
                 if (trans_send) {
+                    console.log("random rare: ", nft);
+
                     for (let i = 0; i < nft.length; i++) {
-                        db.setNftOwner(nft[i].id, sender_id, user_wallet)
-                        sendNft(user_wallet, nft[i].addr);
+                        console.log(`${i}: set owner id:${sender_id} wallet:${user_wallet} for NFT id ${nft[i].id_nft}`);
+                        await db.setNftOwner(nft[i].id_nft, sender_id, user_wallet);
+
+                        console.log(`send ${nft[0].tier} nft addr:${nft[0].contract} to ${user_wallet}`);
+                        await sendNft(user_wallet, nft[i].contract);
                     }
                     bot.answerCallbackQuery(callback_id, {
                         text: `Поздравляем, NFT отправлена!`,
@@ -226,25 +239,37 @@ function call_send_rare(sender_id, callback_id) {
 }
 
 function getRandomNft(nfts, tier) {
+    console.log(`get random ${tier} nft`)
+
     let result = [];
     if (tier === 'common') {
         const random_int = Math.floor(Math.random() * (nfts.common.length-1));
-        return result.push(nfts.common[random_int]);
+        result.push(nfts.common[random_int])
+        return result;
     } else if (tier === 'rare') {
         const random_int = Math.floor(Math.random() * (nfts.rare.length - 1));
+
         if (nfts.common.length >= 5) {
             const return_rare = Math.floor(Math.random() * (2));
+            console.log("return_rare: ", return_rare)
+
+            // if (false) {
             if (return_rare) {
-                return result.push(nfts.rare[random_int]);
+                result.push(nfts.rare[random_int])
+                console.log("returned nfts: ", result)
+                return result;
             } else {
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < 1; i++) {
                     const random_int = Math.floor(Math.random() * (nfts.common.length - 1));
                     const nft = nfts.common.splice(random_int,1)
                     result.push(nft[0]);
                 }
+                console.log("returned nfts: ", result)
                 return result;
             }
+
         } else {
+            console.log("returned nfts: ", result)
             return result.push(nfts.rare[random_int]);
         }
     }

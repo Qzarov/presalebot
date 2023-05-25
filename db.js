@@ -95,7 +95,7 @@ export class Database {
         });
     }
 
-    setNftOwner(id_nft, owner_id, owner_wallet) {
+    async setNftOwner(id_nft, owner_id, owner_wallet) {
         const qry = `UPDATE NFTS SET owner_id=${owner_id} WHERE id_nft=${id_nft};`;
         this.db.run(qry, [], (err) => {
             if (err) return console.error(err.message);
