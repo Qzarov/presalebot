@@ -219,6 +219,7 @@ function call_send_rare(sender_id, callback_id) {
                     console.log("random rare: ", nft);
 
                     for (let i = 0; i < nft.length; i++) {
+                        // TODO fix for many nft sendin'
                         console.log(`${i}: set owner id:${sender_id} wallet:${user_wallet} for NFT id ${nft[i].id_nft}`);
                         await db.setNftOwner(nft[i].id_nft, sender_id, user_wallet);
 
@@ -259,7 +260,7 @@ function getRandomNft(nfts, tier) {
                 console.log("returned nfts: ", result)
                 return result;
             } else {
-                for (let i = 0; i < 1; i++) {
+                for (let i = 0; i < 1; i++) { // TODO set 5 nfts
                     const random_int = Math.floor(Math.random() * (nfts.common.length - 1));
                     const nft = nfts.common.splice(random_int,1)
                     result.push(nft[0]);
