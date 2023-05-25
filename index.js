@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import {Database} from './db.js'
-import {checkTransaction, sendNft} from "./ton_connector.js"
+import {checkTransaction, get_collection_nfts, sendNft} from "./ton_connector.js"
 
 dotenv.config()
 
@@ -36,8 +36,13 @@ bot.on('text', async (msg) => {
             cmd_handler_start(chat_id, username);
         } else if (command === '/wallet') {
             cmd_handler_wallet(chat_id, arr[1]);
-        } else if (command === '/get_collection_data') {
-            await get_collection_data(process.env.COLLECTION_ADDR)
+        } else if (command === '/get_collection_nfts') {
+            const nfts = await get_collection_nfts(process.env.COLLECTION_ADDR)
+            for (let i = 0; i < nfts.length; i++) {
+                db.addNft(nfts[i].id, nfts[i].address, nfts[i].tier, (err) => {
+                    console.log("err while addin' nfts: ", err)
+                });
+            }
         }
     }
 

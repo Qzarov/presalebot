@@ -20,7 +20,7 @@ export class Database {
             if (err) return console.error(err.message);
         });
 
-        const qry1 = `CREATE TABLE IF NOT EXISTS NFTS(id_nft INTEGER PRIMARY KEY AUTOINCREMENT, contract TEXT, tier TEXT, owner_id INTEGER, owner_wallet TEXT)`;
+        const qry1 = `CREATE TABLE IF NOT EXISTS NFTS(id_nft INTEGER PRIMARY KEY, contract TEXT, tier TEXT, owner_id INTEGER, owner_wallet TEXT)`;
         this.db.run(qry1, [], (err) => {
             if (err) return console.error(err.message);
         });
@@ -87,8 +87,9 @@ export class Database {
         });
     }
 
-    addNft(contract, tier, callback) {
-        const qry = `INSERT INTO NFTS(contract,tier) VALUES("${contract}",${tier})`;
+    addNft(id, address, tier, callback) {
+        const qry = `INSERT INTO NFTS(id_nft,contract,tier) VALUES(${id},"${address}","${tier}")`;
+        console.log("qry: ", qry)
         this.db.run(qry, [], (err) => {
             callback(err);
         });
