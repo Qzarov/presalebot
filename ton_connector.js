@@ -122,8 +122,10 @@ export async function get_collection_nfts(collection_address) {
 
 function compare_two_addresses(address1, address2)
 {
-    const address1_format = new tonweb.utils.Address(address1).toString(true, true, true, true)
-    const address2_format = new tonweb.utils.Address(address2).toString(true, true, true, true)
+    return to_our_format(address1)===to_our_format(address2)
+}
 
-    return address1_format===address2_format
+function to_our_format(address)
+{
+    return new tonweb.utils.Address(address).toString(true, true, true, true)
 }
