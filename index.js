@@ -55,6 +55,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         username: callbackQuery.from.username,
         action: callbackQuery.data,
     };
+    const from_msg_id = callbackQuery.message.message_id
 
     console.log(new Date(), " user: ", sender.username, " send action: ", sender.action)
 
@@ -63,7 +64,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         if (command === 'add_wallet') {
             const user_wallet = sender.action.split(':')[1]
             const answer = `Для подтверждения кошелька отправьте ${process.env.VERIFICATION_COST} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Отправлено"`
-            bot.sendMessage(sender.id, answer, {
+            await bot.sendMessage(sender.id, answer, {
                 parse_mode: `Markdown`,
                 reply_markup: {
                     inline_keyboard: [
@@ -84,6 +85,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Ваш кошелек успешно добавлен`,
                     }).then();
+                    bot.deleteMessage(sender.id, from_msg_id)
                 } else {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Транзакция не найдена, нажмите повторно через 10 секунд`,
