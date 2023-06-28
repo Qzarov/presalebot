@@ -13,7 +13,7 @@ const {NftItem, NftCollection} = TonWeb.token.nft;
 
 export async function checkTransaction(w_sender, w_receiver, coins, callback) {
     // TODO add exclude time savin' & checkin'
-    const exclude_by_utime = [1684920409] //метки времени, по которым мы исключаем транзакции, их может быть несколько. Она должна передаваться в аргументы функции
+    const exclude_by_utime = [1684920409, 1684923645] //метки времени, по которым мы исключаем транзакции, их может быть несколько. Она должна передаваться в аргументы функции
 
     const nano_coins = coins * 1000000000;
     let is_found = false;
@@ -29,10 +29,7 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
 
                 const trans_value = Number(in_msg['value']);
 
-                const trans_source_str_format = new tonweb.utils.Address(trans_source).toString(true, true, true, true)
-                const w_sender_str_format = new tonweb.utils.Address(w_sender).toString(true, true, true, true)
-
-                if (trans_source_str_format === w_sender_str_format && trans_value === nano_coins) {
+                if (compare_two_addresses(trans_source, w_sender) && trans_value === nano_coins) {
                     let excluded_by_ts = false //проверка на использованные транзакции
 
                     for (let j = 0; j < exclude_by_utime.length; j++)
@@ -121,4 +118,14 @@ export async function get_collection_nfts(collection_address) {
     }
 
     return nfts
+}
+
+function compare_two_addresses(address1, address2)
+{
+    return to_our_format(address1)===to_our_format(address2)
+}
+
+function to_our_format(address)
+{
+    return new tonweb.utils.Address(address).toString(true, true, true, true)
 }
