@@ -28,6 +28,8 @@ bot.on('text', async (msg) => {
         return;
     }
 
+    console.log(new Date(), " user: ", username, " send: ", text)
+
     if (text[0] === "/") {
         const arr = text.split(" ");
         const command = arr[0];
@@ -45,7 +47,6 @@ bot.on('text', async (msg) => {
             }
         }
     }
-
 });
 
 bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
@@ -55,7 +56,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         action: callbackQuery.data,
     };
 
-    console.log("user: ", sender.username, " send action: ", sender.action)
+    console.log(new Date(), " user: ", sender.username, " send action: ", sender.action)
 
     if (sender.action.includes(':')) {
         const command = sender.action.split(':')[0]
@@ -78,10 +79,11 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                 if (trans_send) {
                     const wallet = sender.action.split(':')[1]
                     db.setUserWallet(sender.id, wallet)
+                    const answer = `Ваш кошелек успешно добавлен!`
+                    bot.sendMessage(sender.id, answer, {}).then();
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Ваш кошелек успешно добавлен`,
                     }).then();
-                    cmd_handler_start(sender.id, sender.username)
                 } else {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Транзакция не найдена, нажмите повторно через 10 секунд`,
@@ -94,6 +96,11 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
     if (sender.action === 'wallet') {
         const answer = `Введите ваш кошелек в формате "/wallet адрес_кошелька"`
         bot.sendMessage(sender.id, answer, {}).then();
+    } else if (sender.action === 'no') {
+        const answer = `Введите ваш кошелек в формате "/wallet адрес_кошелька"`
+        bot.sendMessage(sender.id, answer, {}).then();
+    } else if (sender.action === 'continue') {
+        call_continue(sender.id)
     } else if (sender.action === `buy_common`) {
         call_buy_common(sender.id)
     } else if (sender.action === `buy_rare`) {
@@ -106,31 +113,21 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
 });
 
 function cmd_handler_start(chatId, username) {
-    db.addUser(chatId, username, (is_new_user) => {
-        let answer = `Привет, ${username}!`;
-        db.userHasWallet(chatId, (has_wallet) => {
-            let buttons;
-            if (has_wallet) {
-                answer += `\nВы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных`
-                buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
-            } else {
-                answer += `\nДля продолжения взаимодействия с ботом необходимо добавить ваш кошелек`;
-                buttons = [{text: 'Добавить кошелёк', callback_data: 'wallet'},]
-            }
-
-            db.getNotOwnedNfts((nfts) => {
-                answer += `\n\nДоступно NFT: ${nfts.common.length} common и ${nfts.rare.length} rare`
-                bot.sendMessage(chatId, answer, {
-                    reply_markup: {
-                        resize_keyboard: true,
-                        inline_keyboard: [
-                            buttons
-                        ]
-                    }
-                }).then();
-            });
-        });
-    });
+    console.log(new Date(), " user ", username, " triggered cmd_handler_start")
+    db.addUser(chatId, username, (is_new_user) => {});
+    let answer = `Добро пожаловать в бота коллекции МЕТА КО(Д)Т! 🎉\n\n` +
+                `Мы рады приветствовать тебя в уникальном мире NFT, где каждый токен дарит возможность насладиться новым опытом взаимодействия с Независимым Экспертом.\n\n` +
+                `Здесь ты сможешь обнаружить и приобрести  ценные и интересные NFT, отражающие уникальные истории и творческие идеи нашей команды. Наша коллекция разнообразна и предлагает нечто особенное для каждого коллекционера.\n\n` +
+                `Не упусти свой шанс стать частью этого захватывающего мира NFT. Доверься МЕТА КО(Д)Т и открой для себя необычный опыт, который превратит взаимодействие с Независимым Экспертом в настоящее приключение.\n\n` +
+                `Приятного исследования и приобретения уникальных NFT! 💫`;
+    const buttons = [{text: `Продолжить`, callback_data: `continue`}]
+    bot.sendMessage(chatId, answer, {
+        reply_markup: {
+            inline_keyboard: [
+                buttons
+            ]
+        }
+    }).then();
 }
 
 function cmd_handler_wallet(chat_id, wallet) {
@@ -148,6 +145,30 @@ function cmd_handler_wallet(chat_id, wallet) {
             ]
         }
     }).then();
+}
+
+function call_continue(sender_id) {
+    db.userHasWallet(sender_id, (has_wallet) => {
+        let buttons, answer;
+        if (has_wallet) {
+            answer = `Вы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных.`
+            buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
+        } else {
+            answer = `Чтобы начать покупки, необходимо добавить свой кошелек TON.`;
+            buttons = [{text: 'Добавить кошелёк', callback_data: 'wallet'},]
+        }
+        bot.sendMessage(sender_id, answer, {
+            disable_web_page_preview: false,
+            reply_markup: {
+                resize_keyboard: true,
+                inline_keyboard: [
+                    //[
+                        buttons
+                    //]
+                ]
+            }
+        }).then();
+    });
 }
 
 function call_buy_common(sender_id) {
@@ -169,7 +190,7 @@ function call_buy_common(sender_id) {
 }
 
 function call_buy_rare(sender_id) {
-    const answer = `Для покупки 1 rare или 5 common NFT отвравьте ${RARE_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
+    const answer = `Для покупки 1 rare или 5 common NFT отправьте ${RARE_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
     bot.sendMessage(sender_id, answer, {
         parse_mode: `Markdown`,
         reply_markup: {
