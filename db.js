@@ -15,7 +15,7 @@ export class Database {
     }
 
     createTables() {
-        const qry = `CREATE TABLE IF NOT EXISTS USERS(id_user INTEGER PRIMARY KEY, username TEXT, wallet TEXT DEFAULT 'null')`;
+        const qry = `CREATE TABLE IF NOT EXISTS USERS(id_user INTEGER PRIMARY KEY, username TEXT, wallet TEXT)`;
         this.db.run(qry, [], (err) => {
             if (err) return console.error(err.message);
         });
@@ -72,10 +72,13 @@ export class Database {
         const qry = `SELECT wallet FROM USERS WHERE id_user=${id_user};`;
         this.db.all(qry, [], (err, results) => {
             if (err) return console.error(err.message);
-            if (!results[0]['wallet']) {
-                callback(false)
+
+            const wallet = results[0]['wallet'];
+
+            if (wallet !== null) {
+                callback(true, wallet);
             } else {
-                callback(true, results[0]['wallet']);
+                callback(false);
             }
         });
     }

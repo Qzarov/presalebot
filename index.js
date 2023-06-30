@@ -152,6 +152,7 @@ function cmd_handler_wallet(chat_id, wallet) {
 function call_continue(sender_id) {
     db.userHasWallet(sender_id, (has_wallet) => {
         let buttons, answer;
+        console.log(`sender ${sender_id} has wallet: ${has_wallet}`)
         if (has_wallet) {
             answer = `Вы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных.`
             buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
