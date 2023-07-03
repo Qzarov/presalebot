@@ -86,6 +86,18 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                         text: `Ваш кошелек успешно добавлен`,
                     }).then();
                     bot.deleteMessage(sender.id, from_msg_id)
+
+                    const answer1 = `Вы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных.`
+                    const buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
+
+                    bot.sendMessage(sender.id, answer1, {
+                        disable_web_page_preview: false,
+                        reply_markup: {
+                            inline_keyboard: [
+                                buttons
+                            ]
+                        }
+                    }).then();
                 } else {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Транзакция не найдена, нажмите повторно через 10 секунд`,
@@ -165,9 +177,7 @@ function call_continue(sender_id) {
             reply_markup: {
                 resize_keyboard: true,
                 inline_keyboard: [
-                    //[
                         buttons
-                    //]
                 ]
             }
         }).then();
