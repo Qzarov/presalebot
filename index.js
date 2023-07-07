@@ -18,6 +18,9 @@ const app = express();
 app.use(express.json());
 app.use(cors())
 
+
+let query_to_delete = {}
+
 bot.on('text', async (msg) => {
     const chat_id = msg.chat.id;
     let text = msg.text;
@@ -56,7 +59,10 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         action: callbackQuery.data,
     };
     const from_msg_id = callbackQuery.message.message_id
-
+    if (!query_to_delete[sender.id]) {
+        query_to_delete[sender.id] = []
+    }
+    query_to_delete[sender.id].push(from_msg_id)
     console.log(new Date(), " user: ", sender.username, " send action: ", sender.action)
 
     if (sender.action.includes(':')) {
@@ -80,24 +86,29 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
                 if (trans_send) {
                     const wallet = sender.action.split(':')[1]
                     db.setUserWallet(sender.id, wallet)
-                    const answer = `Ваш кошелек успешно добавлен!`
-                    bot.sendMessage(sender.id, answer, {}).then();
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Ваш кошелек успешно добавлен`,
                     }).then();
-                    bot.deleteMessage(sender.id, from_msg_id)
 
-                    const answer1 = `Вы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных.`
-                    const buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
+                    const answer1 = `Отлично, ваш кошелек добавлен!\n` +
+                        `Теперь осталось дело за малым, необходимо выбрать NFT, которую вы хотите приобрести. 🤔\n\n` +
+                        `У нас есть два вида NFT - это *Обычная* и *Легендарная*, мы уже рассказывали в чем разница между` +
+                        `эти NFT в нашем [канале](https://t.me/meta_kotd)!\n` +
+                        `Визуально каждая NFT в нашей коллекции уникальна, поэтому узнать, какую NFT вы получили, ты сможешь только после покупки! 😼\n\n` +
+                        `После того как ты определился с выбором, ты можешь выбрать любую из двух NFT, для этого нажми *кнопку снизу*.`
+                    const buttons = [{text: `Обычная`, callback_data: `buy_common`},{text: `Легендарная`, callback_data: `buy_rare`}]
 
                     bot.sendMessage(sender.id, answer1, {
                         disable_web_page_preview: false,
+                        parse_mode: `Markdown`,
                         reply_markup: {
                             inline_keyboard: [
                                 buttons
                             ]
                         }
                     }).then();
+                    deleteMessages(sender.id)
+
                 } else {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: `Транзакция не найдена, нажмите повторно через 10 секунд`,
@@ -124,18 +135,20 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
     } else if (sender.action === `send_rare`) {
         call_send_rare(sender.id, callbackQuery.id);
     }
+
 });
 
 function cmd_handler_start(chatId, username) {
     console.log(new Date(), " user ", username, " triggered cmd_handler_start")
     db.addUser(chatId, username, (is_new_user) => {});
-    let answer = `Добро пожаловать в бота коллекции МЕТА КО(Д)Т! 🎉\n\n` +
-                `Мы рады приветствовать тебя в уникальном мире NFT, где каждый токен дарит возможность насладиться новым опытом взаимодействия с Независимым Экспертом.\n\n` +
-                `Здесь ты сможешь обнаружить и приобрести  ценные и интересные NFT, отражающие уникальные истории и творческие идеи нашей команды. Наша коллекция разнообразна и предлагает нечто особенное для каждого коллекционера.\n\n` +
-                `Не упусти свой шанс стать частью этого захватывающего мира NFT. Доверься МЕТА КО(Д)Т и открой для себя необычный опыт, который превратит взаимодействие с Независимым Экспертом в настоящее приключение.\n\n` +
-                `Приятного исследования и приобретения уникальных NFT! 💫`;
+    let answer = `*Добро пожаловать в бота коллекции МЕТА КО(Д)Т!* 🎉\n\n` +
+                `Мы рады приветствовать тебя в уникальном мире *NFT*, где каждый токен дарит возможность насладиться новым опытом взаимодействия с Независимым Экспертом.\n\n` +
+                `Здесь ты сможешь обнаружить и приобрести  ценные и интересные *NFT*, отражающие уникальные истории и творческие идеи нашей команды. Наша коллекция разнообразна и предлагает нечто особенное для каждого коллекционера.\n\n` +
+                `Не упусти свой шанс стать частью этого захватывающего мира *NFT*. Доверься **МЕТА КО(Д)Т** и открой для себя необычный опыт, который превратит взаимодействие с Независимым Экспертом в настоящее приключение.\n\n` +
+                `*Приятного исследования и приобретения уникальных NFT!* 💫`;
     const buttons = [{text: `Продолжить`, callback_data: `continue`}]
     bot.sendMessage(chatId, answer, {
+        parse_mode: `Markdown`,
         reply_markup: {
             inline_keyboard: [
                 buttons
@@ -166,14 +179,20 @@ function call_continue(sender_id) {
         let buttons, answer;
         console.log(`sender ${sender_id} has wallet: ${has_wallet}`)
         if (has_wallet) {
-            answer = `Вы можете купить одну обычную NFT, заплатив ${COMMON_NFT_PRICE} TON, или заплатить ${RARE_NFT_PRICE} TON и получить либо 1 редкую NFT, либо 5 обычных.`
-            buttons = [{text: `${COMMON_NFT_PRICE} TON`, callback_data: `buy_common`},{text: `${RARE_NFT_PRICE} TON`, callback_data: `buy_rare`}]
+            answer = `Отлично, ваш кошелек добавлен!\n` +
+                `Теперь осталось дело за малым, необходимо выбрать NFT, которую вы хотите приобрести. 🤔\n\n` +
+                `У нас есть два вида NFT - это *Обычная* и *Легендарная*, мы уже рассказывали в чем разница между` +
+                `эти NFT в нашем [канале](https://t.me/meta_kotd)!\n` +
+                `Визуально каждая NFT в нашей коллекции уникальна, поэтому узнать, какую NFT вы получили, ты сможешь только после покупки! 😼\n\n` +
+                `После того как ты определился с выбором, ты можешь выбрать любую из двух NFT, для этого нажми *кнопку снизу*.`
+            buttons = [{text: `Обычная`, callback_data: `buy_common`},{text: `Легендарная`, callback_data: `buy_rare`}]
         } else {
             answer = `Чтобы начать покупки, необходимо добавить свой кошелек TON.`;
             buttons = [{text: 'Добавить кошелёк', callback_data: 'wallet'},]
         }
         bot.sendMessage(sender_id, answer, {
-            disable_web_page_preview: false,
+            disable_web_page_preview: true,
+            parse_mode: `Markdown`,
             reply_markup: {
                 resize_keyboard: true,
                 inline_keyboard: [
@@ -187,7 +206,7 @@ function call_continue(sender_id) {
 function call_buy_common(sender_id) {
     db.getNotOwnedNfts((nfts) => {
         const nft = getRandomNft(nfts, 'common');
-        const answer = `Для покупки 1 common NFT отвравьте ${COMMON_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
+        const answer = `Для покупки 1 **Обычной** NFT отправьте ${COMMON_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
         bot.sendMessage(sender_id, answer, {
             parse_mode: `Markdown`,
             reply_markup: {
@@ -203,7 +222,7 @@ function call_buy_common(sender_id) {
 }
 
 function call_buy_rare(sender_id) {
-    const answer = `Для покупки 1 rare или 5 common NFT отправьте ${RARE_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
+    const answer = `Для покупки 1 *Легендарной* или 5 *Обычной* NFT отправьте ${RARE_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
     bot.sendMessage(sender_id, answer, {
         parse_mode: `Markdown`,
         reply_markup: {
@@ -221,9 +240,9 @@ function call_send_common(sender_id, callback_id) {
     db.getNotOwnedNfts((nfts) => {
         db.userHasWallet(sender_id, async (has_wallet, user_wallet) => {
             await checkTransaction(user_wallet, OWNER_ADDR, COMMON_NFT_PRICE, async (trans_send) => {
+                console.log(`found transaction: ${trans_send}`)
                 if (trans_send) {
                     const nft = getRandomNft(nfts, 'common');
-
                     console.log("random common: ", nft);
 
                     console.log(`set owner id:${sender_id} wallet:${user_wallet} for NFT id ${nft[0].id_nft}`);
@@ -231,8 +250,20 @@ function call_send_common(sender_id, callback_id) {
 
                     console.log(`send ${nft[0].tier} nft addr:${nft[0].contract} to ${user_wallet}`);
                     await sendNft(user_wallet, nft[0].contract);
-                    bot.answerCallbackQuery(callback_id, {
-                        text: `Поздравляем, NFT отправлена!`,
+
+                    await bot.answerCallbackQuery(callback_id, {
+                        parse_mode: `Markdown`,
+                        text: `Поздравляем, NFT отправлена!`
+                    }).then();
+
+                    await deleteMessages(sender_id);
+
+                    const answer = `*Поздравляем, вы приобрели NFT из коллекции МЕТА КО(Д)Т* 😻\n\n` +
+                                    `Теперь вы можете посмотреть какая NFT вам досталась, подключив свой кошелек к сайту !!!, также ты можешь продать и обменять свою NFT на другую!\n\n` +
+                                    `Следи за новостями в нашем [канале](https://t.me/meta_kotd)!\n` +
+                                    `*Скоро там будут большие анонсы*🙀`
+                    await bot.sendMessage(sender_id, answer, {
+                        parse_mode: `Markdown`,
                     }).then();
                 } else {
                     bot.answerCallbackQuery(callback_id, {
@@ -246,10 +277,10 @@ function call_send_common(sender_id, callback_id) {
 
 function call_send_rare(sender_id, callback_id) {
     db.getNotOwnedNfts((nfts) => {
-        const nft = getRandomNft(nfts, 'rare');
         db.userHasWallet(sender_id, async (has_wallet, user_wallet) => {
             await checkTransaction(user_wallet, OWNER_ADDR, RARE_NFT_PRICE, async (trans_send) => {
                 if (trans_send) {
+                    const nft = getRandomNft(nfts, 'rare');
                     console.log("random rare: ", nft);
 
                     for (let i = 0; i < nft.length; i++) {
@@ -260,8 +291,20 @@ function call_send_rare(sender_id, callback_id) {
                         console.log(`send ${nft[0].tier} nft addr:${nft[0].contract} to ${user_wallet}`);
                         await sendNft(user_wallet, nft[i].contract);
                     }
-                    bot.answerCallbackQuery(callback_id, {
-                        text: `Поздравляем, NFT отправлена!`,
+
+                    await bot.answerCallbackQuery(callback_id, {
+                        parse_mode: `Markdown`,
+                        text: `Поздравляем, NFT отправлена!`
+                    }).then();
+
+                    await deleteMessages(sender_id);
+
+                    const answer = `*Поздравляем, вы приобрели NFT из коллекции МЕТА КО(Д)Т* 😻\n\n` +
+                        `Теперь вы можете посмотреть какая NFT вам досталась, подключив свой кошелек к сайту !!!, также ты можешь продать и обменять свою NFT на другую!\n\n` +
+                        `Следи за новостями в нашем [канале](https://t.me/meta_kotd)!\n` +
+                        `*Скоро там будут большие анонсы*🙀`
+                    await bot.sendMessage(sender_id, answer, {
+                        parse_mode: `Markdown`
                     }).then();
                 } else {
                     bot.answerCallbackQuery(callback_id, {
@@ -306,6 +349,18 @@ function getRandomNft(nfts, tier) {
         } else {
             console.log("returned nfts: ", result)
             return result.push(nfts.rare[random_int]);
+        }
+    }
+}
+
+async function deleteMessages(chatId) {
+    for (let i = query_to_delete[chatId].length; i > 0; i--) {
+        let next_id = query_to_delete[chatId].pop()
+        console.log(`deleting message ${next_id} in chat ${chatId}`)
+        try {
+            await bot.deleteMessage(chatId, next_id).then(r => {})
+        } catch(err) {
+            console.log(`Error while deleting message ${next_id}: ${err}`)
         }
     }
 }
