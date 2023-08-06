@@ -20,11 +20,20 @@ export class Database {
             if (err) return console.error(err.message);
         });
 
-        const qry1 = `CREATE TABLE IF NOT EXISTS NFTS(id_nft INTEGER PRIMARY KEY, contract TEXT, tier TEXT, owner_id INTEGER, owner_wallet TEXT)`;
+        const qry1 = `CREATE TABLE IF NOT EXISTS NFTS(id_nft INTEGER PRIMARY KEY, contract TEXT, rarity TEXT, owner_id INTEGER, owner_wallet TEXT)`;
         this.db.run(qry1, [], (err) => {
             if (err) return console.error(err.message);
         });
+
+        const qry2 = `CREATE TABLE IF NOT EXISTS TRANSACTIONS(timestamp INTEGER PRIMARY KEY, nft_addr TEXT, owner_wallet TEXT)`;
+        this.db.run(qry2, [], (err) => {
+            if (err) return console.error(err.message);
+        });
     }
+
+    /*
+    *   User
+    */
 
     addUser(id_user, username, callback) {
         this.userExists(id_user, (exists) => {
@@ -90,15 +99,18 @@ export class Database {
         });
     }
 
+    /*
+    *   NFT
+    */
     addNft(id, address, tier, callback) {
-        const qry = `INSERT INTO NFTS(id_nft,contract,tier) VALUES(${id},"${address}","${tier}")`;
+        const qry = `INSERT INTO NFTS(id_nft,contract,rarity) VALUES(${id},"${address}","${tier}")`;
         console.log("qry: ", qry)
         this.db.run(qry, [], (err) => {
             callback(err);
         });
     }
 
-    async setNftOwner(id_nft, owner_id, owner_wallet) {
+    setNftOwner(id_nft, owner_id, owner_wallet) {
         const qry = `UPDATE NFTS SET owner_id=${owner_id} WHERE id_nft=${id_nft};`;
         this.db.run(qry, [], (err) => {
             if (err) return console.error(err.message);
@@ -131,4 +143,45 @@ export class Database {
         });
     }
 
+    /*
+    *   Transaction
+    */
+
+    addTransaction(timestamp, nft_addr, callback) {
+        const qry = `INSERT INTO TRANSACTIONS(timestamp,nft_addr) VALUES(${timestamp},"${nft_addr}")`;
+        console.log("qry: ", qry)
+        this.db.run(qry, [], (err) => {
+            callback(err);
+        });
+    }
+
+    is_transaction_in_db(timestamp, callback) {
+        const qry = `SELECT * FROM TRANSACTIONS WHERE timestamp=${timestamp};`;
+        this.db.all(qry, [], (err, results) => {
+            if (err) return console.error(err.message);
+            if (results.length) {
+                callback(true);
+            } else {
+                callback(false)
+            }
+        });
+    }
+
+    async getAllTimestamps() {
+        const db = this.db
+        return new Promise (function(resolve, reject) {
+            let ts_list = []
+            const qry = `SELECT timestamp FROM TRANSACTIONS;`;
+            db.all(qry, [], (err, results) => {
+                if (err) reject(err.message);
+                let db_list = []
+                for (let i = 0; i < results.length; i++) {
+                    console.log(`push ${results[i]["timestamp"]}`)
+                    db_list.push(results[i]["timestamp"])
+                }
+                ts_list = db_list
+                resolve(ts_list)
+            });
+        });
+    }
 }

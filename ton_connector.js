@@ -11,9 +11,9 @@ const tonweb = new TonWeb(new TonWeb.HttpProvider(process.env.TON_API_PROVIDER,
 
 const {NftItem, NftCollection} = TonWeb.token.nft;
 
-export async function checkTransaction(w_sender, w_receiver, coins, callback) {
+export async function checkTransaction(w_sender, w_receiver, coins, exclude_by_utime, callback) {
     // TODO add exclude time savin' & checkin'
-    const exclude_by_utime = [1684920409, 1684923645] //метки времени, по которым мы исключаем транзакции, их может быть несколько. Она должна передаваться в аргументы функции
+    // const exclude_by_utime = [1684920409, 1684923645] // Метки времени, по которым мы исключаем транзакции, их может быть несколько. Она должна передаваться в аргументы функции
 
     const nano_coins = coins * 1000000000;
     let is_found = false;
@@ -24,13 +24,13 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
             if (res[i]?.hasOwnProperty('in_msg')) {
                 const in_msg = res[i]['in_msg'];
                 const trans_source = in_msg['source'];
-                if (trans_source.length !== 48) //иногда при поиске в истории попадаются адреса "". Мы проверяем длину на 48. Если не 48 идем дальше
+                if (trans_source.length !== 48) // Иногда при поиске в истории попадаются адреса "". Мы проверяем длину на 48. Если не 48 идем дальше
                     continue
 
                 const trans_value = Number(in_msg['value']);
 
                 if (compare_two_addresses(trans_source, w_sender) && trans_value === nano_coins) {
-                    let excluded_by_ts = false //проверка на использованные транзакции
+                    let excluded_by_ts = false // Проверка на использованные транзакции
 
                     for (let j = 0; j < exclude_by_utime.length; j++)
                         if (res[i]['utime']===exclude_by_utime[j]) {
@@ -38,11 +38,10 @@ export async function checkTransaction(w_sender, w_receiver, coins, callback) {
                             break
                         }
 
-                    if (excluded_by_ts===false) {
+                    if (excluded_by_ts === false) {
                         is_found = true
-                        const utime = res[i]['utime'] //будем сохранять метку времени как идентификатор транзакции
-                        callback(is_found)
-                        return
+                        const utime = res[i]['utime'] // Сохраняем метку времени как идентификатор транзакции
+                        callback(is_found, utime)
                     }
                 }
             }
@@ -87,31 +86,31 @@ export async function sendNft(send_to_addr, nft_addr) {
 }
 
 export async function get_collection_nfts(collection_address) {
-    const nft_collection = new NftCollection(tonweb.provider, {address: collection_address});
-    const nft_collection_data = await nft_collection.getCollectionData();
+    const nftCollection = new NftCollection(tonweb.provider, {address: collection_address});
+    const nft_collection_data = await nftCollection.getCollectionData();
     const next_item_index = nft_collection_data['nextItemIndex'];
 
     let nfts = [];
     for (let i = 0; i < next_item_index; i++) {
         try {
-        const nft_addr = await nft_collection.getNftItemAddressByIndex(i)
-        const nft_addr_friendly = new tonweb.utils.Address(nft_addr).toString(true, true, true, true)
-        // TODO get owner address
-        // const nft = await new NftItem(tonweb.provider, {address: nft_addr})
-        // const nft_data = await nft.getData();
-        // const owner_addr = new tonweb.utils.Address(nft_data['ownerAddress']).toString(true, true, true, true);
-        // console.log("owner_addr: ", owner_addr)
-
-        // TODO get nft's tier from metadata
-
-        const nft = {
-            id: i,
-            address: nft_addr_friendly,
-            tier: 'common',
-            // owner_address: nft_owner_friendly,
-        }
-        console.log("nft: ", nft);
-        nfts.push(nft);
+            const nftAddr = await nftCollection.getNftItemAddressByIndex(i)
+            const nftAddrFriendly = new tonweb.utils.Address(nftAddr).toString(true, true, true, true)
+            const nftItem = await new NftItem(tonweb.provider, {address: nftAddr})
+            const content = await nftCollection.getNftItemContent(nftItem);
+            const contentUri = content.contentUri
+            await fetch(contentUri, {method: "GET"})
+                .then(async (response) => {
+                    const nftMeta = await response.json()
+                    const nft = {
+                        id: i,
+                        address: nftAddrFriendly,
+                        rarity: nftMeta["rarity"],
+                        // owner_address: nft_owner_friendly,
+                    }
+                    console.log("nft:", nft);
+                    nfts.push(nft);
+                })
+                .catch(error => console.log(error))
         } catch (err) {
             console.log("error occurred: ", err)
         }
@@ -120,12 +119,10 @@ export async function get_collection_nfts(collection_address) {
     return nfts
 }
 
-function compare_two_addresses(address1, address2)
-{
+function compare_two_addresses(address1, address2) {
     return to_our_format(address1)===to_our_format(address2)
 }
 
-function to_our_format(address)
-{
+function to_our_format(address) {
     return new tonweb.utils.Address(address).toString(true, true, true, true)
 }
