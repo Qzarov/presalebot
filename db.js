@@ -130,9 +130,10 @@ export class Database {
                 common: [],
                 rare: []
             }
+            // console.log(`get ${rows.length} Not Owned Nfts`)
             rows.forEach((row) => {
                 if (row.owner_id === null) {
-                    if (row.tier === `common`) {
+                    if (row.rarity === `common`) {
                         nfts.common.push(row)
                     } else {
                         nfts.rare.push(row)
@@ -176,7 +177,7 @@ export class Database {
                 if (err) reject(err.message);
                 let db_list = []
                 for (let i = 0; i < results.length; i++) {
-                    console.log(`push ${results[i]["timestamp"]}`)
+                    // console.log(`push ${results[i]["timestamp"]}`)
                     db_list.push(results[i]["timestamp"])
                 }
                 ts_list = db_list

@@ -88,7 +88,16 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
             }).then();
         } else if (command === 'check_wallet') {
             const user_wallet = sender.action.split(':')[1]
-            await checkTransaction(user_wallet, OWNER_ADDR, process.env.VERIFICATION_COST, (trans_send, timestamp) => {
+
+            let exclude_by_utime = []
+            await db.getAllTimestamps().then(
+                function(res) {exclude_by_utime = res}
+            )
+            await checkTransaction(user_wallet,
+                                    OWNER_ADDR,
+                                    process.env.VERIFICATION_COST,
+                                    exclude_by_utime,
+                            (trans_send, timestamp) => {
                 if (trans_send) {
                     db.is_transaction_in_db(timestamp, (has_transaction) => {
                         if (has_transaction) {
@@ -253,16 +262,18 @@ function call_buy_rare(sender_id) {
 
 function call_send_common(sender_id, callback_id) {
     db.getNotOwnedNfts((nfts) => {
+        console.log(`get ${nfts.length} not owned nfts`)
         db.userHasWallet(sender_id, async (has_wallet, user_wallet) => {
 
             let exclude_by_utime = []
             await db.getAllTimestamps().then(
                 function(res) {exclude_by_utime = res}
             )
-            await db.getAllTimestamps((res) => {exclude_by_utime = res})
+            // await db.getAllTimestamps((res) => {exclude_by_utime = res})
             await checkTransaction(user_wallet, OWNER_ADDR, COMMON_NFT_PRICE, exclude_by_utime, async (trans_send, timestamp) => {
                 console.log(`found transaction: ${trans_send}`)
                 if (trans_send) {
+                    console.log(`get ${nfts.length} not owned nfts`)
                     const nft = getRandomNft(nfts, 'common');
                     console.log("random common: ", nft);
 
@@ -272,7 +283,9 @@ function call_send_common(sender_id, callback_id) {
                     console.log(`send ${nft[0].tier} nft addr:${nft[0].contract} to ${user_wallet}`);
                     await sendNft(user_wallet, nft[0].contract);
 
-                    await db.addTransaction(timestamp, nft[i].id_nft)
+                    await db.addTransaction(timestamp, nft[0].contract, (err) => {
+                        console.log(`Error while addTransaction: ${err}`)
+                    })
 
                     await bot.answerCallbackQuery(callback_id, {
                         parse_mode: `Markdown`,
@@ -318,7 +331,9 @@ function call_send_rare(sender_id, callback_id) {
                         console.log(`send ${nft[0].tier} nft addr:${nft[0].contract} to ${user_wallet}`);
                         await sendNft(user_wallet, nft[i].contract);
 
-                        await db.addTransaction(timestamp, nft[i].id_nft)
+                        await db.addTransaction(timestamp, nft[i].contract, (err) => {
+                            console.log(`Error while addTransaction: ${err}`)
+                        })
                     }
 
                     await bot.answerCallbackQuery(callback_id, {
@@ -352,10 +367,12 @@ function getRandomNft(nfts, tier) {
     if (tier === 'common') {
         const random_int = Math.floor(Math.random() * (nfts.common.length-1));
         result.push(nfts.common[random_int])
+        console.log(`pushed ${random_int} nft: ${nfts.common[random_int]}`)
         return result;
     } else if (tier === 'legendary') {
         const random_int = Math.floor(Math.random() * (nfts.rare.length - 1));
         result.push(nfts.rare[random_int])
+        console.log(`pushed ${random_int} nft: ${nfts.rare[random_int]}`)
         return result;
 
         // if (nfts.common.length >= 5) {

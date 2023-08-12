@@ -17,6 +17,7 @@ export async function checkTransaction(w_sender, w_receiver, coins, exclude_by_u
 
     const nano_coins = coins * 1000000000;
     let is_found = false;
+    let utime = 0
 
     try {
         const res = await tonweb.provider.getTransactions(w_receiver, TRANS_LIMIT)
@@ -28,7 +29,7 @@ export async function checkTransaction(w_sender, w_receiver, coins, exclude_by_u
                     continue
 
                 const trans_value = Number(in_msg['value']);
-
+                // console.log(`Comparing ${trans_source} and ${w_sender}, coins: ${trans_value} and ${nano_coins}`)
                 if (compare_two_addresses(trans_source, w_sender) && trans_value === nano_coins) {
                     let excluded_by_ts = false // Проверка на использованные транзакции
 
@@ -40,8 +41,9 @@ export async function checkTransaction(w_sender, w_receiver, coins, exclude_by_u
 
                     if (excluded_by_ts === false) {
                         is_found = true
-                        const utime = res[i]['utime'] // Сохраняем метку времени как идентификатор транзакции
-                        callback(is_found, utime)
+                        utime = res[i]['utime'] // Сохраняем метку времени как идентификатор транзакции
+                        console.log(`Transaction ${nano_coins} nanoTON from wallet ${w_sender} found!`)
+                        break
                     }
                 }
             }
@@ -49,7 +51,8 @@ export async function checkTransaction(w_sender, w_receiver, coins, exclude_by_u
     } catch (err) {
         console.log("error occurred: ", err)
     }
-    callback(is_found)
+    console.log(`Check transaction: ${is_found}, ${utime}`)
+    callback(is_found, utime)
 }
 
 export async function sendNft(send_to_addr, nft_addr) {
