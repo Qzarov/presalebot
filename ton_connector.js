@@ -103,19 +103,29 @@ export async function get_collection_nfts(collection_address) {
             const contentUri = content.contentUri
             await fetch(contentUri, {method: "GET"})
                 .then(async (response) => {
+                    await sleep(1000)
                     const nftMeta = await response.json()
+                    var rarnost
+                    for (var j = 0; j < nftMeta["attributes"].length; j++) {
+                        // console.log(nftMeta["attributes"][i])
+                        if (nftMeta["attributes"][j].trait_type === "rarity") {
+                            rarnost = nftMeta["attributes"][j].value
+                        }
+                    }
+                    console.log(`${i} rarnost: ${rarnost}`)
                     const nft = {
                         id: i,
                         address: nftAddrFriendly,
-                        rarity: nftMeta["rarity"],
+                        rarity: rarnost,
                         // owner_address: nft_owner_friendly,
                     }
-                    console.log("nft:", nft);
+                    console.log(`${i} nft pushed`);
                     nfts.push(nft);
                 })
-                .catch(error => console.log(error))
+                .catch(error => {console.log(error);})
         } catch (err) {
-            console.log("error occurred: ", err)
+            console.log(`error occurred while getting ${i} nft: ${err}`)
+            i -= 1
         }
     }
 
@@ -129,3 +139,7 @@ function compare_two_addresses(address1, address2) {
 function to_our_format(address) {
     return new tonweb.utils.Address(address).toString(true, true, true, true)
 }
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }

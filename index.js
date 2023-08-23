@@ -32,17 +32,26 @@ bot.on('text', async (msg) => {
     }
 
     console.log(new Date(), " user: ", username, " send: ", text)
-
     if (text[0] === "/") {
         const arr = text.split(" ");
         const command = arr[0];
 
         if (command === '/start') {
-            cmd_handler_start(chat_id, username);
+            try {
+                cmd_handler_start(chat_id, username);
+            } catch (err) {
+                console.log(`Get /start and catch err: ${err}}`)
+            }
         } else if (command === '/wallet') {
             cmd_handler_wallet(chat_id, arr[1]);
         } else if (command === '/get_collection_nfts') {
-            const nfts = await get_collection_nfts(process.env.COLLECTION_ADDR)
+            var nfts;
+            try {
+                nfts = await get_collection_nfts(process.env.COLLECTION_ADDR)
+            } catch (err) {
+                console.log(`Get /get_collection_nfts and catch err: ${err}}`)
+            }
+            
             for (let i = 0; i < nfts.length; i++) {
                 db.addNft(nfts[i].id, nfts[i].address, nfts[i].rarity, (err) => {
                     if (err) { console.log("err while addin' nfts: ", err) }
@@ -163,7 +172,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
 
 });
 
-function cmd_handler_start(chatId, username) {
+async function cmd_handler_start(chatId, username) {
     console.log(new Date(), " user ", username, " triggered cmd_handler_start")
     db.addUser(chatId, username, (is_new_user) => {});
     let answer = `*Добро пожаловать в бота коллекции МЕТА КО(Д)Т!* 🎉\n\n` +
@@ -172,7 +181,7 @@ function cmd_handler_start(chatId, username) {
                 `Не упусти свой шанс стать частью этого захватывающего мира *NFT*. Доверься **МЕТА КО(Д)Т** и открой для себя необычный опыт, который превратит взаимодействие с Независимым Экспертом в настоящее приключение.\n\n` +
                 `*Приятного исследования и приобретения уникальных NFT!* 💫`;
     const buttons = [{text: `Продолжить`, callback_data: `continue`}]
-    bot.sendMessage(chatId, answer, {
+    await bot.sendMessage(chatId, answer, {
         parse_mode: `Markdown`,
         reply_markup: {
             inline_keyboard: [
@@ -246,7 +255,7 @@ function call_buy_common(sender_id) {
 }
 
 function call_buy_rare(sender_id) {
-    const answer = `Для покупки 1 *Легендарной* или 5 *Обычной* NFT отправьте ${RARE_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
+    const answer = `Для покупки 1 *Легендарной* NFT отправьте ${RARE_NFT_PRICE} TON на адрес \`${OWNER_ADDR}\`, после чего нажмите "Оплата отправлена".`;
     bot.sendMessage(sender_id, answer, {
         parse_mode: `Markdown`,
         reply_markup: {
